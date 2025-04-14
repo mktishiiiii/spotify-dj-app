@@ -123,7 +123,7 @@ async def fetch_albums_for_artists(artists, token, limit=3):
             logging.error(f"Async error fetching albums for {artist['name']}: {e}")
 
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch(session, artist) for artist in artists[:20]]
+        tasks = [fetch(session, artist) for artist in artists[:100]]
         await asyncio.gather(*tasks)
 
     return all_albums
