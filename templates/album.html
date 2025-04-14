@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ album.name }} - トラック一覧</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #1DB954;
+    }
+    .album-info {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    table {
+      width: 50%;
+      margin: 0 auto;
+      border-collapse: collapse;
+      background-color: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+    }
+    th {
+      background-color: #1DB954;
+      color: white;
+      font-weight: normal;
+    }
+    tr:nth-child(even) {
+      background-color: #f5f5f5;
+    }
+    a {
+      color: #1DB954;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 30px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎵 アルバム詳細</h1>
+
+  <div class="album-info">
+    {% if album.images %}
+      <img src="{{ album.images[0].url }}" alt="アルバムジャケット" width="200" height="200" style="border-radius: 8px; margin-bottom: 10px;">
+    {% endif %}
+    <h2>{{ album.name }}</h2>
+    <p>アーティスト: {{ album.artists[0].name }}</p>
+    <p>リリース日: {{ album.release_date }}</p>
+  </div>
+
+  <table>
+    <tr>
+      <th>#</th>
+      <th>トラック名</th>
+      <th>再生時間</th>
+      <th>BPM</th>
+      <th>Key</th>
+      <th>Camelot</th>
+    </tr>
+    {% for t in tracks %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>
+        <a href="https://open.spotify.com/track/{{ t.id }}" target="_blank">
+          {{ t.name }}
+        </a>
+      </td>
+      <td>{{ t.bpm or '' }}</td>
+      <td>{{ t.key or '' }}</td>
+      <td>{{ t.camelot or '' }}</td>
+      <td>
+        {{ (t.duration_ms // 60000) }}:{{ '%02d' % ((t.duration_ms // 1000) % 60) }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <a class="back-link" href="/albums?page={{ page }}&token={{ token }}">← 一覧に戻る</a>
+</body>
+</html>
