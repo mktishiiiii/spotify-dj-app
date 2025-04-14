@@ -5,6 +5,8 @@ import urllib.parse
 from datetime import datetime
 import os
 import logging
+import asyncio
+import aiohttp
 
 CLIENT_ID = os.environ.get('CLIENT_ID')
 CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
@@ -88,6 +90,34 @@ def build_page_list(current, total):
         pages.append(total)
     return pages
 
+async def fetch_albums_for_artists(artists, token, limit=3):
+    headers = {'Authorization': f'Bearer {token}'}
+    all_albums = []
+
+    async def fetch(session, artist):
+        try:
+            album_url = f'https://api.spotify.com/v1/artists/{artist["id"]}/albums'
+            params = {'include_groups': 'album,single', 'limit': limit, 'market': 'JP'}
+            async with session.get(album_url, headers=headers, params=params, timeout=10) as resp:
+                data = await resp.json()
+                for album in data.get('items', []):
+                    all_albums.append({
+                        'id': album['id'],
+                        'artist': artist['name'],
+                        'title': album['name'],
+                        'release_date': album['release_date'],
+                        'type': album['album_type'],
+                        'image_url': album['images'][0]['url'] if album.get('images') else ''
+                    })
+        except Exception as e:
+            logging.error(f"Async error fetching albums for {artist['name']}: {e}")
+
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch(session, artist) for artist in artists[:20]]
+        await asyncio.gather(*tasks)
+
+    return all_albums
+
 @app.route('/albums')
 def albums():
     token = request.args.get('token')
@@ -98,24 +128,7 @@ def albums():
         all_albums = session_cache[token]
     else:
         artists = get_all_followed_artists(token)
-        all_albums = []
-        for artist in artists[:10]:  # 最初の10件のみ取得
-            album_url = f'https://api.spotify.com/v1/artists/{artist["id"]}/albums'
-            params = {'include_groups': 'album,single', 'limit': 3, 'market': 'JP'}
-            try:
-                res = requests.get(album_url, headers={'Authorization': f'Bearer {token}'}, params=params, timeout=10)
-                res.raise_for_status()
-                for album in res.json().get('items', []):
-                    all_albums.append({
-                        'id': album['id'],
-                        'artist': artist['name'],
-                        'title': album['name'],
-                        'release_date': album['release_date'],
-                        'type': album['album_type'],
-                        'image_url': album['images'][0]['url'] if album.get('images') else ''
-                    })
-            except requests.exceptions.RequestException as e:
-                logging.error(f"Error fetching albums for artist {artist['name']}: {e}")
+        all_albums = asyncio.run(fetch_albums_for_artists(artists, token))
         all_albums.sort(key=lambda x: x['release_date'], reverse=True)
         session_cache[token] = all_albums
 
