@@ -62,16 +62,26 @@ def callback():
 def get_all_followed_artists(token):
     url = 'https://api.spotify.com/v1/me/following'
     headers = {'Authorization': f'Bearer {token}'}
-    params = {'type': 'artist', 'limit': 20}
+    params = {'type': 'artist', 'limit': 50}
+    all_artists = []
 
-    try:
-        res = requests.get(url, headers=headers, params=params, timeout=10)
-        res.raise_for_status()
+    while True:
+        res = requests.get(url, headers=headers, params=params)
+        if res.status_code != 200:
+            logging.error(f"Spotify API error during artist fetch: {res.status_code}")
+            break
+
         data = res.json().get('artists', {})
-        return data.get('items', [])
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Spotify API error: {e}")
-        return []
+        items = data.get('items', [])
+        all_artists.extend(items)
+
+        # ページネーションの次ページ用に 'after' を更新
+        if data.get('next') and items:
+            params['after'] = items[-1]['id']
+        else:
+            break
+
+    return all_artists
 
 # ページリストを生成する関数
 def build_page_list(current, total):
