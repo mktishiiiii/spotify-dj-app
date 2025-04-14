@@ -3,10 +3,11 @@ import requests
 import base64
 import urllib.parse
 from datetime import datetime
+import os
 
-CLIENT_ID = 'a52e696c534c4a7ba2890451642f9b26'
-CLIENT_SECRET = '09505f133ce5487fa5d8681542023198'
-REDIRECT_URI = 'http://127.0.0.1:8888/callback'
+CLIENT_ID = os.environ.get('CLIENT_ID')
+CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
+REDIRECT_URI = os.environ.get('REDIRECT_URI')
 
 app = Flask(__name__)
 session_cache = {}
@@ -157,4 +158,4 @@ def album(album_id):
     return render_template('album.html', album=album_res, tracks=tracks, page=page, token=token)
 
 if __name__ == '__main__':
-    app.run(port=8888, debug=True)
+    app.run(debug=True)
