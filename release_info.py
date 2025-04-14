@@ -4,6 +4,7 @@ import base64
 import urllib.parse
 from datetime import datetime
 import os
+import logging
 
 CLIENT_ID = os.environ.get('CLIENT_ID')
 CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
@@ -63,13 +64,18 @@ def get_all_followed_artists(token):
     params = {'type': 'artist', 'limit': 20}
 
     while True:
-        res = requests.get(url, headers=headers, params=params)
-        data = res.json().get('artists', {})
-        items = data.get('items', [])
-        all_artists.extend(items)
-        if data.get('next') is None or not items:
+        try:
+            res = requests.get(url, headers=headers, params=params, timeout=10)
+            res.raise_for_status()
+            data = res.json().get('artists', {})
+            items = data.get('items', [])
+            all_artists.extend(items)
+            if data.get('next') is None or not items:
+                break
+            params['after'] = items[-1]['id']
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Spotify API error: {e}")
             break
-        params['after'] = items[-1]['id']
     return all_artists
 
 # ページリストを生成する関数
@@ -103,16 +109,20 @@ def albums():
         for artist in artists:
             album_url = f'https://api.spotify.com/v1/artists/{artist["id"]}/albums'
             params = {'include_groups': 'album,single', 'limit': 3, 'market': 'JP'}
-            res = requests.get(album_url, headers={'Authorization': f'Bearer {token}'}, params=params)
-            for album in res.json().get('items', []):
-                all_albums.append({
-                    'id': album['id'],
-                    'artist': artist['name'],
-                    'title': album['name'],
-                    'release_date': album['release_date'],
-                    'type': album['album_type'],
-                    'image_url': album['images'][0]['url'] if album.get('images') else ''
-                })
+            try:
+                res = requests.get(album_url, headers={'Authorization': f'Bearer {token}'}, params=params, timeout=10)
+                res.raise_for_status()
+                for album in res.json().get('items', []):
+                    all_albums.append({
+                        'id': album['id'],
+                        'artist': artist['name'],
+                        'title': album['name'],
+                        'release_date': album['release_date'],
+                        'type': album['album_type'],
+                        'image_url': album['images'][0]['url'] if album.get('images') else ''
+                    })
+            except requests.exceptions.RequestException as e:
+                logging.error(f"Error fetching albums for artist {artist['name']}: {e}")
         all_albums.sort(key=lambda x: x['release_date'], reverse=True)
         session_cache[token] = all_albums
 
