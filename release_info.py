@@ -58,25 +58,18 @@ def callback():
     return redirect(f'/albums?token={token}')
 
 def get_all_followed_artists(token):
-    all_artists = []
     url = 'https://api.spotify.com/v1/me/following'
     headers = {'Authorization': f'Bearer {token}'}
     params = {'type': 'artist', 'limit': 20}
 
-    while True:
-        try:
-            res = requests.get(url, headers=headers, params=params, timeout=10)
-            res.raise_for_status()
-            data = res.json().get('artists', {})
-            items = data.get('items', [])
-            all_artists.extend(items)
-            if data.get('next') is None or not items:
-                break
-            params['after'] = items[-1]['id']
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Spotify API error: {e}")
-            break
-    return all_artists
+    try:
+        res = requests.get(url, headers=headers, params=params, timeout=10)
+        res.raise_for_status()
+        data = res.json().get('artists', {})
+        return data.get('items', [])
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Spotify API error: {e}")
+        return []
 
 # ページリストを生成する関数
 def build_page_list(current, total):
@@ -106,7 +99,7 @@ def albums():
     else:
         artists = get_all_followed_artists(token)
         all_albums = []
-        for artist in artists:
+        for artist in artists[:10]:  # 最初の10件のみ取得
             album_url = f'https://api.spotify.com/v1/artists/{artist["id"]}/albums'
             params = {'include_groups': 'album,single', 'limit': 3, 'market': 'JP'}
             try:
